@@ -158,8 +158,8 @@ listaParametrosFormales : tipo ID_
 
 
 
-bloque :  LLAVABR_ declaracionVariableLocal listaInstrucciones LLAVCER_
-;
+bloque :  LLAVABR_ declaracionVariableLocal listaInstrucciones LLAVCER_;
+
 
 
 declaracionVariableLocal :
@@ -207,6 +207,12 @@ instruccionExpresion : PUNTOYCOMA_
 
 
 instruccionEntradaSalida : READ_ PARABR_ ID_ PARCER_ PUNTOYCOMA_
+            {simbolo = obtenerSimbolo($3);
+			if (simbolo.categoria==NULO)
+			    yyerror("La variable no está en la tabla de símbolos",$3); 
+			if( simbolo.tipo!=T_ERROR && simbolo.tipo!=T_ENTERO )
+			    yyerror("La instrucción read ha de recibir un parámetro de tipo entero");
+			}
 
 	| PRINT_ PARABR_ expresion PARCER_ PUNTOYCOMA_;
 
@@ -232,6 +238,7 @@ instruccionIteracion :
 
 
 expresionOpcional : 
+
 	| expresion;
 
 
@@ -361,7 +368,7 @@ expresionUnaria : expresionSufija {$$.tipo=$1.tipo;};
 
 
 expresionSufija : ID_ CORABR_ expresion CORCER_
-            {simbolo = obtenerSimbolo($1); 
+            {simbolo = obtenerSimbolo($1);
 			if(simbolo.categoria==NULO) {
 				yyerror("Variable no declarada"); 
 				$$.tipo=T_ERROR;
@@ -376,7 +383,7 @@ expresionSufija : ID_ CORABR_ expresion CORCER_
 			    $$.tipo=T_ENTERO;}
 							
 	| ID_ PUNTO_ ID_
-	        {simbolo = obtenerSimbolo($1); 
+	        {simbolo = obtenerSimbolo($1);
 			if(simbolo.categoria==NULO) {
 				yyerror("Variable no declarada"); 
 				$$.tipo=T_ERROR;
@@ -404,8 +411,9 @@ expresionSufija : ID_ CORABR_ expresion CORCER_
 			}else 
 				$$.tipo=T_ENTERO;}
 					
-	| ID_ PARABR_ parametrosActuales PARCER_
+	| ID_ PARABR_ parametrosActuales PARCER_  //FUNCIONS
 	        {simbolo=obtenerSimbolo($1);
+	        INF infoFunc = obtenerInfoFuncion(simbolo.ref);
             if(simbolo.categoria==NULO) {
 	            yyerror("Variable no declarada"); 
 	            $$.tipo=T_ERROR;
@@ -413,10 +421,13 @@ expresionSufija : ID_ CORABR_ expresion CORCER_
 	            yyerror("No hay ninguna función declarada con este nombre");
 	            $$.tipo=T_ERROR;
             }else if(simbolo.tipo!=T_ENTERO){
-	            yyerror("Error de tipos: el valor de retorno de una funcion debe ser un entero");
+	            yyerror("El valor de retorno de una funcion debe ser un entero");
 	            $$.tipo=T_ERROR;
-            }else if(!comparaDominio($3.ref,simbolo.ref)){
-	            yyerror("Error de tipos: los parámetros de llamada de la función no coinciden con los esperados");
+	        }else if($3.talla != infoFunc.tparam){
+	            yyerror("El número de parámetros de llamada de la función no es correcto");
+	            $$.tipo=T_ERROR;
+            }else if($3.tipo != T_ERROR && !comparaDominio($3.ref,simbolo.ref)){
+	            yyerror("El dominio de la función no es el esperado");
 	            $$.tipo=T_ERROR;
             }else 
 	            $$.tipo=T_ENTERO;}
@@ -438,15 +449,35 @@ expresionSufija : ID_ CORABR_ expresion CORCER_
 
 
 
-parametrosActuales : {$$.ref=insertaInfoDominio(-1,T_VACIO)}
+parametrosActuales :
+            {$$.ref=insertaInfoDominio(-1,T_VACIO);
+            $$.talla=0;} //El nombre de paràmetres de la funció
 
-	| listaParametrosActuales {$$.ref=$1.ref;};
+	| listaParametrosActuales
+	        {$$.ref=$1.ref;
+	        $$.talla=$1.talla;}; //Passem amunt el nombre de paràmetres de la funció
 
 
 
-listaParametrosActuales : expresion {$$.ref=insertaInfoDominio(-1,$1.tipo)}
+listaParametrosActuales : expresion
+            {if($1.tipo == T_ERROR)
+                $$.tipo=T_ERROR; //Propaguem l'error amunt per poder informar millor després (no volem que tire un error genèric al comparar dominis)
+            else if($1.tipo != T_ENTERO)
+                yyerror("Los parámetros de las funciones han de ser de tipo entero");
+            else
+                $$.tipo=T_VACIO; //Per posar-li algo...
+            $$.ref=insertaInfoDominio(-1,$1.tipo);
+            $$.talla=1;}
 
-	| expresion COMA_ listaParametrosActuales {$$.ref=insertaInfoDominio($3.ref,$1.tipo);};
+	| expresion COMA_ listaParametrosActuales
+            {if($1.tipo == T_ERROR)
+                $$.tipo=T_ERROR; //Propaguem l'error amunt per poder informar millor després (no volem que tire un error genèric al comparar dominis)
+            else if($1.tipo != T_ENTERO)
+                yyerror("Error de tipo. Los parámetros de las funciones han de ser enteros");
+            else
+                $$.tipo=T_VACIO; //Per posar-li algo...
+            $$.ref=insertaInfoDominio($3.ref,$1.tipo);
+            $$.talla=$3.talla+1}; //Incrementem el nombre de paràmetres de la funció
 
 
 
