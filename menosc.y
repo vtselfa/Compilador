@@ -41,8 +41,19 @@ extern int yylineno;
 
 %%
 
-programa : {nivel=0; cargaContexto(nivel); desp=0;} secuenciaDeclaraciones;
-
+programa :
+            {nivel=0; cargaContexto(nivel); desp=0;}
+        secuenciaDeclaraciones
+            {simbolo = obtenerSimbolo("main"); //Comprovem que la funció main existeix
+                if(simbolo.categoria != FUNCION)
+                    yyerror("No se encuentra la función main");
+                else{
+                    INF infoFunc = obtenerInfoFuncion(simbolo.ref);
+                    if(infoFunc.tparam != 0)
+                        yyerror("La funcion main no ha de recibir ningún parámetro");
+                }
+            }
+;
 
 
 secuenciaDeclaraciones : declaracion
@@ -214,8 +225,9 @@ instruccionEntradaSalida : READ_ PARABR_ ID_ PARCER_ PUNTOYCOMA_
 			    yyerror("La instrucción read ha de recibir un parámetro de tipo entero");
 			}
 
-	| PRINT_ PARABR_ expresion PARCER_ PUNTOYCOMA_;
-
+	| PRINT_ PARABR_ expresion PARCER_ PUNTOYCOMA_
+;
+            
 
 
 instruccionSeleccion :
