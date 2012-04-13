@@ -100,41 +100,36 @@ void truncCReal()
 
 
 
-
-
-int main (int argc, char **argv)
 /* Programa principal: gestiona la linea de comandos e invoca al
-analizador sintactico-semantico. */
-{
-int i, n = 0;
-numErrores=0;
-verbosidad=FALSE;
-verTDS=FALSE;
-for (i=0; i<argc; ++i) {
-     if (strcmp(argv[i], "-v")==0) { 
-         verbosidad = TRUE; 
-         n++; 
-     }
-     else if (strcmp(argv[i], "-t")==0) { 
-         verTDS = TRUE;
-         n++; 
-     }
-}
---argc;
-n++;
-if (argc == n) {
-    if ((yyin = fopen (argv[argc], "r")) == NULL)
-        fprintf (stderr, "Fichero no valido %s\n", argv[argc]);
-    else{
-        if (verbosidad == TRUE) 
-	    fprintf(stdout,"%3d.- ", yylineno);
-        yyparse ();
-
-        if (numErrores > 0)
-            fprintf(stdout,"\nNumero de errores: %d\n", numErrores);
+analizador sintactico-semantico.*/
+int main (int argc, char **argv){ int i, n = 0;
+    for (i=0; i<argc; ++i) {
+        if (strcmp(argv[i], "-v")==0){
+            verbosidad = TRUE;
+            n++;
+        }else if (strcmp(argv[i], "-t")==0){
+            verTDS = TRUE;
+            n++;
+        }
     }
+    --argc;
+    n++;
+    if (argc == n) {
+        if ((yyin = fopen (argv[argc], "r")) == NULL){
+            fprintf (stderr, "Fichero no valido %s\n", argv[argc]);
+        }else{
+            if (verbosidad == TRUE)
+                fprintf(stdout,"%3d.- ", yylineno);
+            yyparse ();
+            if (numErrores > 0)
+                fprintf(stdout,"\nNumero de errores:%d\n", numErrores);
+        }
+    } else {
+        fprintf (stderr, "Uso: cmc [-v] [-t] fichero\n");
+    }
+    
+    return 0;
 }
-else fprintf (stderr, "Uso: cmc [-v] [-t] fichero\n");
-}
+
 
 

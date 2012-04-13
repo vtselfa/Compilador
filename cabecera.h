@@ -1,6 +1,7 @@
 #ifndef CABECERA_H
 
 #include "libtds.h"
+#include "libgci.h"
 
 #define TALLA_SEGENLACES 2
 #define MAX_LENGTH 14
@@ -23,11 +24,11 @@ typedef struct TIPONOM{
 
 /*typedef struct simb Elementos de la TDS 
 {
-int categoria; / Categora del objeto /
+int categoria; / Categoría del objeto /
 int tipo; / Tipo del objeto /
 int desp; / Desplazamiento relativo en memoria /
 int nivel; / Nivel del bloque /
-int ref; / Campo de referencia de usos multiples /
+int ref; / Campo de referencia de usos múltiples /
 }SIMB; 
 */
 
@@ -37,7 +38,7 @@ REG registro;
 /*typedef struct dim /* Elementos de la Tabla de Array 
 {
 int telem; /* Tipo de los elementos 
-int nelem; /* Numero de elementos del array
+int nelem; /* Número de elementos del array
 }DIM;*/
 
 DIM array;
@@ -45,7 +46,7 @@ DIM array;
 int verbosidad;
 int numErrores;
 int verTDS;
-int desp;
+//int desp; //Ara usem dvar, definit a libgci.h
 int nivel;
 int ro;
 

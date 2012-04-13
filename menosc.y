@@ -42,7 +42,7 @@ extern int yylineno;
 %%
 
 programa :
-            {nivel=0; cargaContexto(nivel); desp=0;}
+            {nivel=0; cargaContexto(nivel); dvar=0;}
         secuenciaDeclaraciones
             {simbolo = obtenerSimbolo("main"); //Comprovem que la funció main existeix
             if(simbolo.categoria != FUNCION)
@@ -66,10 +66,10 @@ secuenciaDeclaraciones : declaracion
 
 
 declaracion : declaracionVariable 
-            {if(!insertaSimbolo($1.nombre,VARIABLE,$1.tipo,desp,nivel,$1.ref)) 
+            {if(!insertaSimbolo($1.nombre,VARIABLE,$1.tipo,dvar,nivel,$1.ref)) 
                 yyerror("Identificador repetido");
             mostrarTDS(0); 
-	        desp+=$1.talla;}
+	        dvar+=$1.talla;}
 		        
 	| declaracionFuncion
 ;
@@ -125,13 +125,13 @@ listaCampos : declaracionVariable
 
 declaracionFuncion :
         cabeceraFuncion
-            {$<aux>$ = desp;
-            desp=0;
+            {$<aux>$ = dvar;
+            dvar=0;
             mostrarTDS(0);}
         bloque
             {descargaContexto(nivel);
             nivel--;
-            desp = $<aux>2;}
+            dvar = $<aux>2;}
 ;
 
 
@@ -146,7 +146,7 @@ cabeceraFuncion :
         PARCER_ 
             {if($1.tipo!=T_ENTERO)
 		        yyerror("El tipo del valor de retorno de una función debe ser entero");
-	        if(!insertaSimbolo($2,FUNCION,$1.tipo,desp,nivel-1,$5.ref))
+	        if(!insertaSimbolo($2,FUNCION,$1.tipo,dvar,nivel-1,$5.ref))
 		        yyerror("Identificador repetido");}
 ;
 
@@ -188,9 +188,9 @@ bloque :  LLAVABR_ declaracionVariableLocal listaInstrucciones LLAVCER_
 declaracionVariableLocal :
 
 	| declaracionVariableLocal declaracionVariable 
-            {if(!insertaSimbolo($2.nombre,VARIABLE,$2.tipo,desp,nivel,$2.ref))
+            {if(!insertaSimbolo($2.nombre,VARIABLE,$2.tipo,dvar,nivel,$2.ref))
                 yyerror("Identificador repetido"); 
-	        desp=desp+$2.talla;
+	        dvar=dvar+$2.talla;
 	        mostrarTDS(nivel);}
 ;
 							
@@ -204,14 +204,16 @@ listaInstrucciones :
 
 
 instruccion :
-            {nivel++; cargaContexto(nivel); $<aux>$=desp;}
+            {nivel++;
+            cargaContexto(nivel);
+            $<aux>$=dvar;}
         LLAVABR_
         declaracionVariableLocal
         listaInstrucciones
         LLAVCER_
             {descargaContexto(nivel);
             nivel--;
-            desp=$<aux>1;}
+            dvar=$<aux>1;}
             
 	| instruccionExpresion
 	

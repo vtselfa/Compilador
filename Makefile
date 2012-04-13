@@ -3,7 +3,7 @@ LIB=lib$(shell getconf LONG_BIT)
 all: cmc
 
 cmc: alex.o asin.o
-	gcc -o cmc alex.o asin.o -L./${LIB} -I./include -lfl -ltds
+	gcc -o cmc alex.o asin.o -L./${LIB} -I./include -lfl -ltds -lgci
 asin.o: asin.c
 	gcc -c asin.c -I./include
 alex.o: alex.c asin.c
