@@ -45,30 +45,34 @@ programa :
             {nivel=0; cargaContexto(nivel); desp=0;}
         secuenciaDeclaraciones
             {simbolo = obtenerSimbolo("main"); //Comprovem que la funció main existeix
-                if(simbolo.categoria != FUNCION)
-                    yyerror("No se encuentra la función main");
-                else{
-                    INF infoFunc = obtenerInfoFuncion(simbolo.ref);
-                    if(infoFunc.tparam != 0)
-                        yyerror("La funcion main no ha de recibir ningún parámetro");
-                }
+            if(simbolo.categoria != FUNCION)
+                yyerror("No se encuentra la función main");
+            else{
+                INF infoFunc = obtenerInfoFuncion(simbolo.ref);
+                if(infoFunc.tparam != 0)
+                    yyerror("La funcion main no ha de recibir ningún parámetro");
+            }
+            descargaContexto(nivel);   
             }
 ;
 
 
+
 secuenciaDeclaraciones : declaracion
 
-	| secuenciaDeclaraciones declaracion;
+	| secuenciaDeclaraciones declaracion
+;
 
 
 
 declaracion : declaracionVariable 
             {if(!insertaSimbolo($1.nombre,VARIABLE,$1.tipo,desp,nivel,$1.ref)) 
                 yyerror("Identificador repetido");
-                mostrarTDS(0); 
-		        desp=desp+$1.talla;}
+            mostrarTDS(0); 
+	        desp+=$1.talla;}
 		        
-	| declaracionFuncion;
+	| declaracionFuncion
+;
 
 
 
@@ -84,7 +88,8 @@ declaracionVariable : tipo ID_  PUNTOYCOMA_
             $$.nombre=$2;
             $$.tipo=T_ARRAY;
             $$.ref=insertaInfoArray($1.tipo,$4);
-            $$.talla=$4*$1.talla;};
+            $$.talla=$4*$1.talla;}
+;
 
 
 
@@ -96,7 +101,8 @@ tipo : INT_
 	| STRUCT_ LLAVABR_ listaCampos LLAVCER_
 	        {$$.tipo=T_RECORD;
 	        $$.talla=$3.talla;
-	        $$.ref=$3.ref;};
+	        $$.ref=$3.ref;}
+;
 
 
 
@@ -112,7 +118,8 @@ listaCampos : declaracionVariable
 			$$.ref=insertaInfoCampo($1.ref,$2.nombre,$2.tipo,$1.talla);
 		    if($$.ref==-1)
 				yyerror("Identificador repetido"); 
-			$$.talla=$1.talla + $2.talla;};
+			$$.talla=$1.talla + $2.talla;}
+;
 
 
 
@@ -124,7 +131,8 @@ declaracionFuncion :
         bloque
             {descargaContexto(nivel);
             nivel--;
-            desp = $<aux>2;};
+            desp = $<aux>2;}
+;
 
 
 
@@ -139,7 +147,8 @@ cabeceraFuncion :
             {if($1.tipo!=T_ENTERO)
 		        yyerror("El tipo del valor de retorno de una función debe ser entero");
 	        if(!insertaSimbolo($2,FUNCION,$1.tipo,desp,nivel-1,$5.ref))
-		        yyerror("Identificador repetido"); };
+		        yyerror("Identificador repetido");}
+;
 
 
 
@@ -147,7 +156,8 @@ parametrosFormales :
             {$$.ref=insertaInfoDominio(-1,T_VACIO);}
             
 	| listaParametrosFormales
-	        {$$.ref=$1.ref;};
+	        {$$.ref=$1.ref;}
+;
 	
 	
 
@@ -165,11 +175,13 @@ listaParametrosFormales : tipo ID_
 				yyerror("El tipo de los parámetros de una función debe ser entero");
 			if(!insertaSimbolo($2,PARAMETRO,$1.tipo,-ro,nivel,-1)) 
 				yyerror("Identificador repetido"); 
-			$$.ref =insertaInfoDominio($4.ref,$1.tipo);};
+			$$.ref =insertaInfoDominio($4.ref,$1.tipo);}
+;
 
 
 
-bloque :  LLAVABR_ declaracionVariableLocal listaInstrucciones LLAVCER_;
+bloque :  LLAVABR_ declaracionVariableLocal listaInstrucciones LLAVCER_
+;
 
 
 
@@ -179,13 +191,15 @@ declaracionVariableLocal :
             {if(!insertaSimbolo($2.nombre,VARIABLE,$2.tipo,desp,nivel,$2.ref))
                 yyerror("Identificador repetido"); 
 	        desp=desp+$2.talla;
-	        mostrarTDS(nivel);};
+	        mostrarTDS(nivel);}
+;
 							
 							
 							
 listaInstrucciones :
 
-	| listaInstrucciones instruccion;
+	| listaInstrucciones instruccion
+;
 
 
 
@@ -207,13 +221,15 @@ instruccion :
 	 
 	| instruccionIteracion
 	
-	| instruccionSalto;
+	| instruccionSalto
+;
 
 
 
 instruccionExpresion : PUNTOYCOMA_
 
-	| expresion PUNTOYCOMA_;
+	| expresion PUNTOYCOMA_
+;
 
 
 
@@ -341,7 +357,8 @@ expresionIgualdad : expresionRelacional {$$.tipo=$1.tipo;}
 				if (($1.tipo!=T_ERROR)&&($3.tipo!=T_ERROR))
 					yyerror("Error de tipos en la asignación");
 				$$.tipo=T_ERROR;
-			}};
+			}}
+;
 
 
 
@@ -354,7 +371,8 @@ expresionRelacional : expresionAditiva {$$.tipo=$1.tipo;}
 				if (($1.tipo!=T_ERROR)&&($3.tipo!=T_ERROR))
 					yyerror("Error de tipos en la asignación");
 				$$.tipo=T_ERROR;
-			}};
+			}}
+;
 
 
 
@@ -367,7 +385,8 @@ expresionAditiva : expresionMultiplicativa {$$.tipo=$1.tipo;}
 				if (($1.tipo!=T_ERROR)&&($3.tipo!=T_ERROR))
 					yyerror("Error de tipos en la asignación");
 				$$.tipo=T_ERROR;
-			}};
+			}}
+;
 
 
 
@@ -380,7 +399,8 @@ expresionMultiplicativa : expresionUnaria {$$.tipo=$1.tipo;}
 				if (($1.tipo!=T_ERROR)&&($3.tipo!=T_ERROR))
 					yyerror("Error de tipos en la asignación");
 				$$.tipo=T_ERROR;
-			}};
+			}}
+;
 
 
 
@@ -394,7 +414,8 @@ expresionUnaria : expresionSufija {$$.tipo=$1.tipo;}
 			    yyerror("Error de tipo. La variable no es un entero");
 			    $$.tipo=T_ERROR;
 			} else
-			    $$.tipo=T_ENTERO;};
+			    $$.tipo=T_ENTERO;}
+;
 
 
 
@@ -479,7 +500,8 @@ expresionSufija : ID_ CORABR_ expresion CORCER_
 			}else 
 				$$.tipo=T_ENTERO;}
 				
-	| ENTERO_ {$$.tipo=T_ENTERO;};
+	| ENTERO_ {$$.tipo=T_ENTERO;}
+;
 
 
 
@@ -489,7 +511,8 @@ parametrosActuales :
 
 	| listaParametrosActuales
 	        {$$.ref=$1.ref;
-	        $$.talla=$1.talla;}; //Passem amunt el nombre de paràmetres de la funció
+	        $$.talla=$1.talla;} //Passem amunt el nombre de paràmetres de la funció
+;
 
 
 
@@ -511,7 +534,8 @@ listaParametrosActuales : expresion
             else
                 $$.tipo=T_VACIO; //Per posar-li algo...
             $$.ref=insertaInfoDominio($3.ref,$1.tipo);
-            $$.talla=$3.talla+1;}; //Incrementem el nombre de paràmetres de la funció
+            $$.talla=$3.talla+1;} //Incrementem el nombre de paràmetres de la funció
+;
 
 
 
@@ -519,13 +543,15 @@ operadorAsignacion : IGUAL_
 
 	| MASIGUAL_
 	 
-	| MENOSIGUAL_;
+	| MENOSIGUAL_
+;
 
 
 
 operadorIgualdad : IGUALIGUAL_
 
-	| DISTINTO_;
+	| DISTINTO_
+;
 
 
 
@@ -535,31 +561,36 @@ operadorRelacional : MAYOR_
 	
 	| MAYORIGUAL_
 	
-	| MENORIGUAL_;
+	| MENORIGUAL_
+;
 
 
 
 operadorAditivo : MAS_
 
-	| MENOS_;
+	| MENOS_
+;
 
 
 
 operadorMultiplicativo : POR_
 
-	| DIV_;
+	| DIV_
+;
 
 
 
 operadorIncremento : MASMAS_
 
-	| MENOSMENOS_;
+	| MENOSMENOS_
+;
 
 
 
 operadorUnario : MAS_
 
 	| MENOS_
+;
 
 %%
 
