@@ -126,7 +126,7 @@ cabeceraFuncion :
         parametrosFormales
         PARCER_ 
             {if($1.tipo!=T_ENTERO)
-		        yyerror("El tipo del valor de retorno de una funciÛn debe ser entero");
+		        yyerror("El tipo del valor de retorno de una funci√≥n debe ser entero");
 	        if(!insertaSimbolo($2,FUNCION,$1.tipo,desp,nivel-1,$5.ref))
 		        yyerror("Identificador repetido"); };
 
@@ -143,7 +143,7 @@ parametrosFormales :
 listaParametrosFormales : tipo ID_
             {ro = ro + $1.talla;
 			if($1.tipo!=T_ENTERO)
-				yyerror("El tipo de los par·metros de una funciÛn debe ser entero");
+				yyerror("El tipo de los par√°metros de una funci√≥n debe ser entero");
 			if(!insertaSimbolo($2,PARAMETRO,$1.tipo,-ro,nivel,-1))
 				yyerror("Identificador repetido");
 			$$.ref=insertaInfoDominio(-1,$1.tipo);}
@@ -151,7 +151,7 @@ listaParametrosFormales : tipo ID_
 	| tipo ID_ COMA_ listaParametrosFormales
 	        {ro = ro + $1.talla; 
 			if($1.tipo!=T_ENTERO)
-				yyerror("El tipo de los par·metros de una funciÛn debe ser entero");
+				yyerror("El tipo de los par√°metros de una funci√≥n debe ser entero");
 			if(!insertaSimbolo($2,PARAMETRO,$1.tipo,-ro,nivel,-1)) 
 				yyerror("Identificador repetido"); 
 			$$.ref =insertaInfoDominio($4.ref,$1.tipo);};
@@ -209,16 +209,26 @@ instruccionExpresion : PUNTOYCOMA_
 instruccionEntradaSalida : READ_ PARABR_ ID_ PARCER_ PUNTOYCOMA_
             {simbolo = obtenerSimbolo($3);
 			if (simbolo.categoria==NULO)
-			    yyerror("La variable no est· en la tabla de sÌmbolos",$3); 
+			    yyerror("La variable no est√° en la tabla de s√≠mbolos",$3); 
 			if( simbolo.tipo!=T_ERROR && simbolo.tipo!=T_ENTERO )
-			    yyerror("La instrucciÛn read ha de recibir un par·metro de tipo entero");
+			    yyerror("La instrucci√≥n read ha de recibir un par√°metro de tipo entero");
 			}
 
 	| PRINT_ PARABR_ expresion PARCER_ PUNTOYCOMA_;
 
 
 
-instruccionSeleccion : IF_ PARABR_ expresion PARCER_ instruccion ELSE_ instruccion;
+instruccionSeleccion :
+        IF_
+        PARABR_
+        expresion
+        PARCER_
+            {if($3.tipo!=T_LOGICO) //Per a que el test b03.c mostre els errors que toca no comprovem si el tipo √©s T_ERROR
+                yyerror("La expresi√≥n de dentro del IF ha de ser de tipo l√≥gico");}
+        instruccion
+        ELSE_
+        instruccion
+;
 
 
 
@@ -229,21 +239,26 @@ instruccionIteracion :
         PUNTOYCOMA_
         expresion
             {if($5.tipo!=T_LOGICO)
-                yyerror("ExpresiÛn no es de tipo logico");}
+                yyerror("La expresi√≥n de la condici√≥n de parada del bucle FOR ha de ser de tipo l√≥gico");}
         PUNTOYCOMA_
         expresionOpcional
         PARCER_
-        instruccion;
+        instruccion
+;
 
 
 
 expresionOpcional : 
 
-	| expresion;
+	| expresion
+;
 
 
 
-instruccionSalto : RETURN_ expresion PUNTOYCOMA_;
+instruccionSalto : RETURN_ expresion PUNTOYCOMA_
+            {if($2.tipo != T_ENTERO) //Per a que el test b03.c mostre els errors que toca no comprovem si el tipo √©s T_ERROR
+                yyerror("El valor de retorno de la funci√≥n ha de ser de tipo entero");}
+;
 
 
 
@@ -272,7 +287,7 @@ expresion : expresionIgualdad {$$.tipo=$1.tipo;}
 			} else {
     			array = obtenerInfoArray(simbolo.ref);
 				if($3.tipo!=T_ENTERO)
-				    yyerror("El Ìndice debe ser un entero");
+				    yyerror("El √≠ndice debe ser un entero");
 				else if (array.telem==$6.tipo && array.telem==T_ENTERO )
 				    $$.tipo=T_ENTERO;
 				else {
@@ -282,7 +297,7 @@ expresion : expresionIgualdad {$$.tipo=$1.tipo;}
 				}
 			}}
 												
-	| ID_ PUNTO_ ID_ operadorAsignacion expresion
+	| ID_ PUNTO_ ID_ operadorAsignacion expresion  //Asignar a REGISTRE
 	        {simbolo = obtenerSimbolo($1);
 			if(simbolo.categoria==NULO)
 			    yyerror("Variable no declarada");
@@ -290,11 +305,15 @@ expresion : expresionIgualdad {$$.tipo=$1.tipo;}
 			    yyerror("La variable no es un registro");
 			else {
 				registro = obtenerInfoCampo(simbolo.ref, $3);
-				if( registro.tipo == $5.tipo && registro.tipo == T_ENTERO)
+				if(registro.tipo == T_ERROR){
+				    yyerror("El campo del registro no existe");
+				    $$.tipo=T_ERROR;
+				}
+				else if( registro.tipo == $5.tipo && registro.tipo == T_ENTERO)
 				    $$.tipo=T_ENTERO;
 				else {
 					if ($5.tipo!=T_ERROR && registro.tipo!=T_ERROR )
-						yyerror("Error de tipos en la asignaciÛn");
+						yyerror("Error de tipos en la asignaci√≥n");
 					$$.tipo=T_ERROR;
 				}
 			}};
@@ -308,7 +327,7 @@ expresionIgualdad : expresionRelacional {$$.tipo=$1.tipo;}
 	            $$.tipo=T_LOGICO;
 			else{
 				if (($1.tipo!=T_ERROR)&&($3.tipo!=T_ERROR))
-					yyerror("Error de tipos en la asignaciÛn");
+					yyerror("Error de tipos en la asignaci√≥n");
 				$$.tipo=T_ERROR;
 			}};
 
@@ -321,7 +340,7 @@ expresionRelacional : expresionAditiva {$$.tipo=$1.tipo;}
 	            $$.tipo=T_LOGICO;
 			else{
 				if (($1.tipo!=T_ERROR)&&($3.tipo!=T_ERROR))
-					yyerror("Error de tipos en la asignaciÛn");
+					yyerror("Error de tipos en la asignaci√≥n");
 				$$.tipo=T_ERROR;
 			}};
 
@@ -334,28 +353,28 @@ expresionAditiva : expresionMultiplicativa {$$.tipo=$1.tipo;}
 	            $$.tipo=T_ENTERO;
 			else{
 				if (($1.tipo!=T_ERROR)&&($3.tipo!=T_ERROR))
-					yyerror("Error de tipos en la asignaciÛn");
+					yyerror("Error de tipos en la asignaci√≥n");
 				$$.tipo=T_ERROR;
 			}};
 
 
 
-expresionMultiplicativa : expresionUnaria {$$.tipo=$1.tipo;};
+expresionMultiplicativa : expresionUnaria {$$.tipo=$1.tipo;}
 
 	| expresionMultiplicativa operadorMultiplicativo expresionUnaria
 	        {if($1.tipo==$3.tipo && $1.tipo==T_ENTERO)
 	            $$.tipo=T_ENTERO;
 			else{
 				if (($1.tipo!=T_ERROR)&&($3.tipo!=T_ERROR))
-					yyerror("Error de tipos en la asignaciÛn");
+					yyerror("Error de tipos en la asignaci√≥n");
 				$$.tipo=T_ERROR;
 			}};
 
 
 
-expresionUnaria : expresionSufija {$$.tipo=$1.tipo;};
+expresionUnaria : expresionSufija {$$.tipo=$1.tipo;}
 
-	| operadorUnario expresionUnaria {$$.tipo=$2.tipo;};
+	| operadorUnario expresionUnaria {$$.tipo=$2.tipo;}
 	
 	| operadorIncremento ID_
 	        {simbolo = obtenerSimbolo($2); 
@@ -377,7 +396,7 @@ expresionSufija : ID_ CORABR_ expresion CORCER_
 				$$.tipo=T_ERROR; 
 			} else if($3.tipo!=T_ENTERO){
 				if($3.tipo!=T_ERROR) 
-					yyerror("El Ìndice debe ser un entero"); 
+					yyerror("El √≠ndice debe ser un entero"); 
 				$$.tipo=T_ERROR; 
 			} else
 			    $$.tipo=T_ENTERO;}
@@ -392,10 +411,13 @@ expresionSufija : ID_ CORABR_ expresion CORCER_
 				$$.tipo=T_ERROR; 
 			}else{
 				registro = obtenerInfoCampo(simbolo.ref,$3);
-				if(registro.tipo != T_ENTERO){
-					if(registro.tipo!=T_ERROR) 
-						yyerror("El registro debe ser de tipo entero"); 
-					$$.tipo=T_ERROR; 
+				if(registro.tipo == T_ERROR){
+				    yyerror("El campo del registro no existe");
+				    $$.tipo=T_ERROR;
+				}
+				else if(registro.tipo != T_ENTERO){
+					yyerror("El registro debe ser de tipo entero"); 
+					$$.tipo=T_ERROR;
 				}else 
 					$$.tipo=T_ENTERO;
 		    }}
@@ -418,16 +440,16 @@ expresionSufija : ID_ CORABR_ expresion CORCER_
 	            yyerror("Variable no declarada"); 
 	            $$.tipo=T_ERROR;
             }else if(simbolo.categoria!=FUNCION){
-	            yyerror("No hay ninguna funciÛn declarada con este nombre");
+	            yyerror("No hay ninguna funci√≥n declarada con este nombre");
 	            $$.tipo=T_ERROR;
             }else if(simbolo.tipo!=T_ENTERO){
 	            yyerror("El valor de retorno de una funcion debe ser un entero");
 	            $$.tipo=T_ERROR;
 	        }else if($3.talla != infoFunc.tparam){
-	            yyerror("El n˙mero de par·metros de llamada de la funciÛn no es correcto");
+	            yyerror("El n√∫mero de par√°metros de llamada de la funci√≥n no es correcto");
 	            $$.tipo=T_ERROR;
             }else if($3.tipo != T_ERROR && !comparaDominio($3.ref,simbolo.ref)){
-	            yyerror("El dominio de la funciÛn no es el esperado");
+	            yyerror("El dominio de la funci√≥n no es el esperado");
 	            $$.tipo=T_ERROR;
             }else 
 	            $$.tipo=T_ENTERO;}
@@ -451,19 +473,19 @@ expresionSufija : ID_ CORABR_ expresion CORCER_
 
 parametrosActuales :
             {$$.ref=insertaInfoDominio(-1,T_VACIO);
-            $$.talla=0;} //El nombre de par‡metres de la funciÛ
+            $$.talla=0;} //El nombre de par√†metres de la funci√≥
 
 	| listaParametrosActuales
 	        {$$.ref=$1.ref;
-	        $$.talla=$1.talla;}; //Passem amunt el nombre de par‡metres de la funciÛ
+	        $$.talla=$1.talla;}; //Passem amunt el nombre de par√†metres de la funci√≥
 
 
 
 listaParametrosActuales : expresion
             {if($1.tipo == T_ERROR)
-                $$.tipo=T_ERROR; //Propaguem l'error amunt per poder informar millor desprÈs (no volem que tire un error genËric al comparar dominis)
+                $$.tipo=T_ERROR; //Propaguem l'error amunt per poder informar millor despr√©s (no volem que tire un error gen√®ric al comparar dominis)
             else if($1.tipo != T_ENTERO)
-                yyerror("Los par·metros de las funciones han de ser de tipo entero");
+                yyerror("Los par√°metros de las funciones han de ser de tipo entero");
             else
                 $$.tipo=T_VACIO; //Per posar-li algo...
             $$.ref=insertaInfoDominio(-1,$1.tipo);
@@ -471,13 +493,13 @@ listaParametrosActuales : expresion
 
 	| expresion COMA_ listaParametrosActuales
             {if($1.tipo == T_ERROR)
-                $$.tipo=T_ERROR; //Propaguem l'error amunt per poder informar millor desprÈs (no volem que tire un error genËric al comparar dominis)
+                $$.tipo=T_ERROR; //Propaguem l'error amunt per poder informar millor despr√©s (no volem que tire un error gen√®ric al comparar dominis)
             else if($1.tipo != T_ENTERO)
-                yyerror("Error de tipo. Los par·metros de las funciones han de ser enteros");
+                yyerror("Error de tipo. Los par√°metros de las funciones han de ser enteros");
             else
                 $$.tipo=T_VACIO; //Per posar-li algo...
             $$.ref=insertaInfoDominio($3.ref,$1.tipo);
-            $$.talla=$3.talla+1}; //Incrementem el nombre de par‡metres de la funciÛ
+            $$.talla=$3.talla+1;}; //Incrementem el nombre de par√†metres de la funci√≥
 
 
 
