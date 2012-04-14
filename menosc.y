@@ -297,9 +297,11 @@ instruccionSalto : RETURN_ expresion PUNTOYCOMA_
 
 
 
-expresion : expresionIgualdad {$$.tipo=$1.tipo;}
+expresion : expresionIgualdad //GCI
+            {$$.tipo=$1.tipo;
+            $$.pos = $1.pos;}
 
-	| ID_ operadorAsignacion expresion
+	| ID_ operadorAsignacion expresion //GCI
 	        {simbolo = obtenerSimbolo($1);
 			if (simbolo.categoria==NULO)
 			    yyerror("Variable no declarada"); 
@@ -312,7 +314,7 @@ expresion : expresionIgualdad {$$.tipo=$1.tipo;}
 			}
 			emite(EASIG, $3.pos, crArgNulo(), crArgPosicion(simbolo.nivel, simbolo.desp)); }
 							
-	| ID_ CORABR_ expresion CORCER_ operadorAsignacion expresion
+	| ID_ CORABR_ expresion CORCER_ operadorAsignacion expresion //id[expr] = expr //GCI
 	        {simbolo = obtenerSimbolo($1); 
 			if(simbolo.categoria==NULO){
 			    yyerror("Variable no declarada");
@@ -331,9 +333,12 @@ expresion : expresionIgualdad {$$.tipo=$1.tipo;}
 						yyerror("Error de tipos en la asignacion");
 					$$.tipo=T_ERROR;
 				}
-			}}
+			}
+			TIPO_ARG vec = crArgPosicion(simbolo.nivel, simbolo.desp);
+			emite( EAV, vec, $3.pos, $6.pos);
+			}
 												
-	| ID_ PUNTO_ ID_ operadorAsignacion expresion  //Asignar a REGISTRE
+	| ID_ PUNTO_ ID_ operadorAsignacion expresion  //id.id = expr //GCI
 	        {simbolo = obtenerSimbolo($1);
 			if(simbolo.categoria==NULO)
 			    yyerror("Variable no declarada");
@@ -352,20 +357,31 @@ expresion : expresionIgualdad {$$.tipo=$1.tipo;}
 						yyerror("Error de tipos en la asignación");
 					$$.tipo=T_ERROR;
 				}
-			}};
+			}
+			TIPO_ARG res = crArgPosicion(simbolo.nivel, simbolo.desp + registro.desp)
+			emite( EASIG, $5.pos, crArgNulo(), res ); }
+;
 
 
 
-expresionIgualdad : expresionRelacional {$$.tipo=$1.tipo;}
+expresionIgualdad : expresionRelacional //GCI
+            {$$.tipo=$1.tipo;
+            $$.pos=$1.pos;}
 
-	| expresionIgualdad operadorIgualdad expresionRelacional
+	| expresionIgualdad operadorIgualdad expresionRelacional //GCI
 	        {if($1.tipo==$3.tipo && $1.tipo==T_ENTERO)
 	            $$.tipo=T_LOGICO;
 			else{
 				if (($1.tipo!=T_ERROR)&&($3.tipo!=T_ERROR))
 					yyerror("Error de tipos en la asignación");
 				$$.tipo=T_ERROR;
-			}}
+			}
+			TIPO_ARG res = crArgPosicion(nivel, creaVarTemp());
+			emite( EIGUAL, $1.pos, $3.pos, si+3); //Si expr1 == expr2 -> salta les pròximes 2 instr
+			emite( EASIG, crArgEntero(0), crArgNulo(), res); //Guarda false
+			emite( GOTOS, crArgNulo(), crArgNulo(), crArgEntero(si+2)); //Salta fora
+			emite( EASIG, crArgEntero(1), crArgNulo(), res); //Guarda true
+			}
 ;
 
 
