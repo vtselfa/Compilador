@@ -48,6 +48,7 @@ int verbosidad;
 int numErrores;
 int verTDS;
 //int desp; //Ara usem dvar, definit a libgci.h
+int dvarMax;
 int nivel;
 int ro;
 

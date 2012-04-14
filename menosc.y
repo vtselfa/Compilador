@@ -62,6 +62,8 @@ programa :
                 if(infoFunc.tparam != 0)
                     yyerror("La funcion main no ha de recibir ningún parámetro");
             }
+	    emite(FIN, crArgNulo(), crArgNulo(), crArgNulo() );
+
             descargaContexto(nivel);   
             }
 ;
@@ -136,10 +138,29 @@ listaCampos : declaracionVariable
 declaracionFuncion :
         cabeceraFuncion
             {$<aux>$ = dvar;
-            dvar=0;
+            dvar = 0;
+            dvarMax = 0;
             mostrarTDS(0);}
+
+	    {emite(PUSHFP, crArgNulo(), crArgNulo(), crArgNulo());
+            emite(FPTOP, crArgNulo(), crArgNulo(), crArgNulo());
+            $<aux>$ =creaLans(si);
+            emite(INCTOP,crArgNulo(),crArgNulo(),crArgNulo());}
         bloque
-            {descargaContexto(nivel);
+            {
+            TIPO_ARG tipo_arg;
+
+            if(dvar >= dvarMax)
+                  tipo_arg = crArgEntero(dvar);      
+            else
+                  tipo_arg = crArgEntero(dvarMax);
+
+            completaLans($<aux>3,tipo_arg);
+
+            emite(TOPFP, crArgNulo(), crArgNulo(), crArgNulo());
+            emite(FPPOP, crArgNulo(), crArgNulo(), crArgNulo());
+            emite(RET, crArgNulo(), crArgNulo(), crArgNulo());
+	    descargaContexto(nivel);
             nivel--;
             dvar = $<aux>2;}
 ;
@@ -222,6 +243,8 @@ instruccion :
         listaInstrucciones
         LLAVCER_
             {descargaContexto(nivel);
+	    if(dvar > dvarMax)
+                   dvarMax = dvar;
             nivel--;
             dvar=$<aux>1;}
             
@@ -523,7 +546,10 @@ expresionSufija : ID_ CORABR_ expresion CORCER_
 			}else 
 				$$.tipo=T_ENTERO;}
 					
-	| ID_ PARABR_ parametrosActuales PARCER_  //FUNCIONS
+	| ID_ PARABR_ 
+		{emite(INCTOP, crArgNulo(), crArgNulo(), crArgEntero(TALLA_ENTERO));}
+
+          parametrosActuales PARCER_  //FUNCIONS
 	        {simbolo=obtenerSimbolo($1);
 	        INF infoFunc = obtenerInfoFuncion(simbolo.ref);
             if(simbolo.categoria==NULO) {
@@ -535,14 +561,19 @@ expresionSufija : ID_ CORABR_ expresion CORCER_
             }else if(simbolo.tipo!=T_ENTERO){
 	            yyerror("El valor de retorno de una funcion debe ser un entero");
 	            $$.tipo=T_ERROR;
-	        }else if($3.talla != infoFunc.tparam){
+	        }else if($4.talla != infoFunc.tparam){
 	            yyerror("El número de parámetros de llamada de la función no es correcto");
 	            $$.tipo=T_ERROR;
-            }else if($3.tipo != T_ERROR && !comparaDominio($3.ref,simbolo.ref)){
+            }else if($4.tipo != T_ERROR && !comparaDominio($4.ref,simbolo.ref)){
 	            yyerror("El dominio de la función no es el esperado");
 	            $$.tipo=T_ERROR;
             }else 
-	            $$.tipo=T_ENTERO;}
+	            $$.tipo=T_ENTERO;
+                    emite(EPUSH, crArgNulo(), crArgNulo(), crArgEntero(si+2));
+                    emite(CALL, crArgNulo(), crArgNulo(), crArgEtiqueta(simbolo.desp));
+                    emite(DECTOP, crArgNulo(), crArgNulo(), crArgEntero(TALLA_SEGENLACES));
+                    $$.pos = crArgPosicion(nivel, creaVarTemp());
+                    emite(EPOP, crArgNulo(), crArgNulo(), $$.pos);}
 							
 	| PARABR_ expresion PARCER_
 	        {$$.tipo=$2.tipo;
