@@ -102,7 +102,9 @@ void truncCReal()
 
 /* Programa principal: gestiona la linea de comandos e invoca al
 analizador sintactico-semantico.*/
-int main (int argc, char **argv){ int i, n = 0;
+int main (int argc, char **argv){ 
+    int i, n = 0;
+    char* nom_fich;
     for (i=0; i<argc; ++i) {
         if (strcmp(argv[i], "-v")==0){
             verbosidad = TRUE;
@@ -121,8 +123,11 @@ int main (int argc, char **argv){ int i, n = 0;
             if (verbosidad == TRUE)
                 fprintf(stdout,"%3d.- ", yylineno);
             yyparse ();
+            nom_fich = argv[argc];
             if (numErrores > 0)
                 fprintf(stdout,"\nNumero de errores:%d\n", numErrores);
+            else
+                vuelcaCodigo(nom_fich);
         }
     } else {
         fprintf (stderr, "Uso: cmc [-v] [-t] fichero\n");
