@@ -13,6 +13,7 @@ typedef struct TIPO{
 	int tipo;
 	int talla;
 	int ref;
+	int pos;
 }TIPO;
 
 typedef struct TIPONOM{

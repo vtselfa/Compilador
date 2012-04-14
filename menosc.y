@@ -42,7 +42,10 @@ extern int yylineno;
 %%
 
 programa :
-            {nivel=0; cargaContexto(nivel); dvar=0;}
+            {nivel=0;
+            cargaContexto(nivel);
+            dvar=0; //Desp en seg. de dades
+            si=0} //Desp. en seg. de codi
         secuenciaDeclaraciones
             {simbolo = obtenerSimbolo("main"); //Comprovem que la funció main existeix
             if(simbolo.categoria != FUNCION)
@@ -502,7 +505,10 @@ expresionSufija : ID_ CORABR_ expresion CORCER_
 			}else 
 				$$.tipo=T_ENTERO;}
 				
-	| ENTERO_ {$$.tipo=T_ENTERO;}
+	| ENTERO_
+	        {$$.tipo=T_ENTERO;
+	        $$.pos = creaVarTemp();
+	        emite( EASIG, crArgEntero($1), crArgNulo(), crArgPos(nivel,$$.pos))} //Asignem el valor del enter a la var. temp.
 ;
 
 
