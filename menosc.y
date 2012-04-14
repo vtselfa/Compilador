@@ -39,13 +39,15 @@ extern int yylineno;
 %type <tipo> listaParametrosActuales;
 %type <tipo> parametrosActuales;
 
+%type <cent> operadorUnario;
+%type <cent> operadorIncremento;
 %%
 
 programa :
             {nivel=0;
             cargaContexto(nivel);
             dvar=0; //Desp en seg. de dades
-            si=0} //Desp. en seg. de codi
+            si=0;} //Desp. en seg. de codi
         secuenciaDeclaraciones
             {simbolo = obtenerSimbolo("main"); //Comprovem que la funció main existeix
             if(simbolo.categoria != FUNCION)
@@ -307,7 +309,8 @@ expresion : expresionIgualdad {$$.tipo=$1.tipo;}
 			    if( $3.tipo!=T_ERROR && simbolo.tipo!=T_ERROR )
 					yyerror("Error de tipos en la asignacion");
 				$$.tipo=T_ERROR;
-			}}
+			}
+			emite(EASIG, $3.pos, crArgNulo(), crArgPosicion(simbolo.nivel, simbolo.desp)); }
 							
 	| ID_ CORABR_ expresion CORCER_ operadorAsignacion expresion
 	        {simbolo = obtenerSimbolo($1); 
@@ -411,7 +414,12 @@ expresionMultiplicativa : expresionUnaria {$$.tipo=$1.tipo;}
 
 expresionUnaria : expresionSufija {$$.tipo=$1.tipo;}
 
-	| operadorUnario expresionUnaria {$$.tipo=$2.tipo;}
+	| operadorUnario expresionUnaria
+	        {$$.tipo=$2.tipo;
+	        if( !$1 ){ //Hem definit el operador unari de resta com un 0
+	            $$.pos = crArgPosicion(nivel,creaVarTemp());
+	            emite( ESIG, $2.pos, crArgNulo(), $$.pos);
+	        }}
 	
 	| operadorIncremento ID_
 	        {simbolo = obtenerSimbolo($2); 
@@ -419,7 +427,11 @@ expresionUnaria : expresionSufija {$$.tipo=$1.tipo;}
 			    yyerror("Error de tipo. La variable no es un entero");
 			    $$.tipo=T_ERROR;
 			} else
-			    $$.tipo=T_ENTERO;}
+			    $$.tipo=T_ENTERO;
+		    TIPO_ARG res = crArgPosicion(simbolo.nivel, simbolo.desp);
+		    emite( $1, res, crArgEntero(1), res ); //Sumem 1 a la variable
+		    $$.pos = crArgPosicion(nivel, creaVarTemp()); //Cream var temp
+		    emite( EASIG, res, crArgNulo(), res); }; //Asignim la var temp a $$.pos
 ;
 
 
@@ -492,7 +504,9 @@ expresionSufija : ID_ CORABR_ expresion CORCER_
             }else 
 	            $$.tipo=T_ENTERO;}
 							
-	| PARABR_ expresion PARCER_ {$$.tipo=$2.tipo;}
+	| PARABR_ expresion PARCER_
+	        {$$.tipo=$2.tipo;
+	        $$.pos=$2.pos;}
 	
 	| ID_
 	        {simbolo=obtenerSimbolo($1);
@@ -505,10 +519,10 @@ expresionSufija : ID_ CORABR_ expresion CORCER_
 			}else 
 				$$.tipo=T_ENTERO;}
 				
-	| ENTERO_
+	| ENTERO_ //Ok
 	        {$$.tipo=T_ENTERO;
-	        $$.pos = creaVarTemp();
-	        emite( EASIG, crArgEntero($1), crArgNulo(), crArgPos(nivel,$$.pos))} //Asignem el valor del enter a la var. temp.
+	        $$.pos = crArgPosicion(nivel, creaVarTemp());
+	        emite( EASIG, crArgEntero($1), crArgNulo(), $$.pos );} //Asignem el valor del enter a la var. temp.
 ;
 
 
@@ -588,16 +602,16 @@ operadorMultiplicativo : POR_
 
 
 
-operadorIncremento : MASMAS_
+operadorIncremento : MASMAS_ {$$=ESUM;}
 
-	| MENOSMENOS_
+	| MENOSMENOS_ {$$=EDIF;}
 ;
 
 
 
-operadorUnario : MAS_
+operadorUnario : MAS_ {$$=0;} //Per a saber quin és quin
 
-	| MENOS_
+	| MENOS_ {$$=1;} //Per a saber quin és quin
 ;
 
 %%
