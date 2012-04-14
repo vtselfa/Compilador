@@ -41,6 +41,11 @@ extern int yylineno;
 
 %type <cent> operadorUnario;
 %type <cent> operadorIncremento;
+%type <cent> operadorIgualdad;
+%type <cent> operadorRelacional;
+%type <cent> operadorMultiplicativo;
+%type <cent> operadorAditivo;
+%type <cent> operadorAsignacion;
 %%
 
 programa :
@@ -312,9 +317,13 @@ expresion : expresionIgualdad //GCI
 					yyerror("Error de tipos en la asignacion");
 				$$.tipo=T_ERROR;
 			}
-			emite(EASIG, $3.pos, crArgNulo(), crArgPosicion(simbolo.nivel, simbolo.desp)); }
+			TIPO_ARG id = crArgPosicion(simbolo.nivel, simbolo.desp);
+			if($2!=EASIG) //Tenim un '+=' o un '-='
+			    emite($2, id, $3.pos, id);
+			else //Tenim un '='
+			    emite(EASIG, $3.pos, crArgNulo(), id); }
 							
-	| ID_ CORABR_ expresion CORCER_ operadorAsignacion expresion //id[expr] = expr //GCI
+	| ID_ CORABR_ expresion CORCER_ operadorAsignacion expresion //id[expr] [+- ]= expr //GCI
 	        {simbolo = obtenerSimbolo($1); 
 			if(simbolo.categoria==NULO){
 			    yyerror("Variable no declarada");
@@ -335,8 +344,14 @@ expresion : expresionIgualdad //GCI
 				}
 			}
 			TIPO_ARG vec = crArgPosicion(simbolo.nivel, simbolo.desp);
-			emite( EAV, vec, $3.pos, $6.pos);
-			}
+			if($5!=EASIG){ //Tenim un '+=' o un '-='
+			    TIPO_ARG tmp = crArgPosicion(nivel, creaVarTemp()); //Var temp per a fer càlculs
+			    emite( EAV, vec, $3.pos, tmp); //array -> tmp
+			    emite( $5, tmp, $6.pos, tmp); //tmp = tmp [+-] expr 
+			    emite( EVA, vec, $3.pos, tmp); //tmp -> array
+			}else{ //Tenim un '='
+			    emite( EVA, vec, $3.pos, $6.pos);
+			}}
 												
 	| ID_ PUNTO_ ID_ operadorAsignacion expresion  //id.id = expr //GCI
 	        {simbolo = obtenerSimbolo($1);
@@ -358,8 +373,11 @@ expresion : expresionIgualdad //GCI
 					$$.tipo=T_ERROR;
 				}
 			}
-			TIPO_ARG res = crArgPosicion(simbolo.nivel, simbolo.desp + registro.desp)
-			emite( EASIG, $5.pos, crArgNulo(), res ); }
+			TIPO_ARG campo = crArgPosicion(simbolo.nivel, simbolo.desp + registro.desp);
+			if($4!=EASIG) //Tenim un '+=' o un '-='
+			    emite( $4, campo, $5.pos, campo );
+			else //Tenim un '='
+			    emite( EASIG, $5.pos, crArgNulo(), campo );}
 ;
 
 
@@ -377,30 +395,36 @@ expresionIgualdad : expresionRelacional //GCI
 				$$.tipo=T_ERROR;
 			}
 			TIPO_ARG res = crArgPosicion(nivel, creaVarTemp());
-			emite( EIGUAL, $1.pos, $3.pos, si+3); //Si expr1 == expr2 -> salta les pròximes 2 instr
-			emite( EASIG, crArgEntero(0), crArgNulo(), res); //Guarda false
-			emite( GOTOS, crArgNulo(), crArgNulo(), crArgEntero(si+2)); //Salta fora
-			emite( EASIG, crArgEntero(1), crArgNulo(), res); //Guarda true
-			}
+			emite( EASIG, crArgEntero(1), crArgNulo(), res);  //Guarda true
+			emite( $2, $1.pos, $3.pos, crArgEntero(si+2)); //Si expr1 [!=]= expr2 -> salta la pròxima instrucció
+			emite( EASIG, crArgEntero(0), crArgNulo(), res);} //Guarda false
 ;
 
 
 
-expresionRelacional : expresionAditiva {$$.tipo=$1.tipo;}
+expresionRelacional : expresionAditiva //GCI
+            {$$.tipo=$1.tipo;
+            $$.pos=$1.pos;}
 
-	| expresionRelacional operadorRelacional expresionAditiva
+	| expresionRelacional operadorRelacional expresionAditiva //GCI
 	        {if($1.tipo==$3.tipo && $1.tipo==T_ENTERO)
 	            $$.tipo=T_LOGICO;
 			else{
 				if (($1.tipo!=T_ERROR)&&($3.tipo!=T_ERROR))
 					yyerror("Error de tipos en la asignación");
 				$$.tipo=T_ERROR;
-			}}
+			}
+			TIPO_ARG res = crArgPosicion(nivel, creaVarTemp());
+			emite( EASIG, crArgEntero(1), crArgNulo(), res);  //Guarda true
+			emite( $2, $1.pos, $3.pos, crArgEntero(si+2)); //Si expr1 [!=]= expr2 -> salta la pròxima instrucció
+			emite( EASIG, crArgEntero(0), crArgNulo(), res);} //Guarda false
 ;
 
 
 
-expresionAditiva : expresionMultiplicativa {$$.tipo=$1.tipo;}
+expresionAditiva : expresionMultiplicativa
+            {$$.tipo=$1.tipo;
+            $$.pos=$1.pos;}
 
 	| expresionAditiva operadorAditivo expresionMultiplicativa
 	        {if($1.tipo==$3.tipo && $1.tipo==T_ENTERO)
@@ -577,43 +601,43 @@ listaParametrosActuales : expresion
 
 
 
-operadorAsignacion : IGUAL_
+operadorAsignacion : IGUAL_ {$$=EASIG;}
 
-	| MASIGUAL_
+	| MASIGUAL_ {$$=ESUM;}
 	 
-	| MENOSIGUAL_
+	| MENOSIGUAL_ {$$=EDIF;}
 ;
 
 
 
-operadorIgualdad : IGUALIGUAL_
+operadorIgualdad : IGUALIGUAL_ {$$=EIGUAL;}
 
-	| DISTINTO_
+	| DISTINTO_ {$$=EDIST;}
 ;
 
 
 
-operadorRelacional : MAYOR_
+operadorRelacional : MAYOR_ {$$=EMAY;}
 
-	| MENOR_
+	| MENOR_ {$$=EMEN;}
 	
-	| MAYORIGUAL_
+	| MAYORIGUAL_ {$$=EMAYEQ;}
 	
-	| MENORIGUAL_
+	| MENORIGUAL_ {$$=EMENEQ;}
 ;
 
 
 
-operadorAditivo : MAS_
+operadorAditivo : MAS_ {$$=ESUM;}
 
-	| MENOS_
+	| MENOS_ {$$=EDIF;}
 ;
 
 
 
-operadorMultiplicativo : POR_
+operadorMultiplicativo : POR_ {$$=EMULT;}
 
-	| DIV_
+	| DIV_ {$$=EDIVI;}
 ;
 
 
