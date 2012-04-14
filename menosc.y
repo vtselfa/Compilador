@@ -617,7 +617,9 @@ listaParametrosActuales : expresion
             else
                 $$.tipo=T_VACIO; //Per posar-li algo...
             $$.ref=insertaInfoDominio(-1,$1.tipo);
-            $$.talla=1;}
+            $$.talla=TALLA_ENTERO;
+            emite(EPUSH, crArgNulo(), crArgNulo(), $1.pos);
+            }
 
 	| expresion COMA_ listaParametrosActuales
             {if($1.tipo == T_ERROR)
@@ -626,8 +628,9 @@ listaParametrosActuales : expresion
                 yyerror("Error de tipo. Los parámetros de las funciones han de ser enteros");
             else
                 $$.tipo=T_VACIO; //Per posar-li algo...
-            $$.ref=insertaInfoDominio($3.ref,$1.tipo);
-            $$.talla=$3.talla+1;} //Incrementem el nombre de paràmetres de la funció
+            $$.ref = insertaInfoDominio($3.ref,$1.tipo);
+            $$.talla = $3.talla+TALLA_ENTERO;
+            emite(EPUSH, crArgNulo(), crArgNulo(), $1.pos);} //Incrementem el nombre de paràmetres de la funció
 ;
 
 
