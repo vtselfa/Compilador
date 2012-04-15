@@ -67,8 +67,7 @@ programa :
                 if(infoFunc.tparam != 0)
                     yyerror("La funcion main no ha de recibir ningún parámetro");
             }
-	    emite(FIN, crArgNulo(), crArgNulo(), crArgNulo() );
-
+	        emite(FIN, crArgNulo(), crArgNulo(), crArgNulo() );
             descargaContexto(nivel);   
             }
 ;
@@ -148,14 +147,12 @@ declaracionFuncion :
             mostrarTDS(0);}
 
 	    {hayReturn = FALSE;
-            emite(PUSHFP, crArgNulo(), crArgNulo(), crArgNulo());
-            emite(FPTOP, crArgNulo(), crArgNulo(), crArgNulo());
-            $<aux>$ =creaLans(si);
-            emite(INCTOP,crArgNulo(),crArgNulo(),crArgNulo());}
+            emite(PUSHFP, crArgNulo(), crArgNulo(), crArgNulo()); //Apilem el fp
+            emite(FPTOP, crArgNulo(), crArgNulo(), crArgNulo()); //Ara fp apunta al top de la pila
+            $<aux>$ = creaLans(si); //Volem completar despres el pròxim emite
+            emite(INCTOP,crArgNulo(),crArgNulo(),crArgNulo());} //Resevem espai per a les variables locals i temporals (dvar o dvarmax). Com no sabem la talla total, hem fet un crealans.
         bloque
-            {
-            TIPO_ARG tipo_arg;
-
+            {TIPO_ARG tipo_arg;
             if(dvar >= dvarMax)
                   tipo_arg = crArgEntero(dvar);      
             else
@@ -165,8 +162,8 @@ declaracionFuncion :
             if(strcmp(obtenerInfoFuncion(-1).nombre,"main") !=0 )
                   completaLans(posReturn, crArgEtiqueta(si));        //Si no es main, ha d'haver-hi un return
 
-            emite(TOPFP, crArgNulo(), crArgNulo(), crArgNulo());
-            emite(FPPOP, crArgNulo(), crArgNulo(), crArgNulo());
+            emite(TOPFP, crArgNulo(), crArgNulo(), crArgNulo()); //El top de la pila ara apunta al mateix lloc que el fp
+            emite(FPPOP, crArgNulo(), crArgNulo(), crArgNulo()); //Recuperem el fp antic
             if(strcmp(obtenerInfoFuncion(-1).nombre,"main") !=0 ) //Sols fem return si la funció no és main
                  emite(RET, crArgNulo(), crArgNulo(), crArgNulo());
 	    descargaContexto(nivel);
@@ -254,8 +251,8 @@ instruccion :
         listaInstrucciones
         LLAVCER_
             {descargaContexto(nivel);
-	    if(dvar > dvarMax)
-                   dvarMax = dvar;
+	        if(dvar > dvarMax)
+                dvarMax = dvar;
             nivel--;
             dvar=$<aux>1;}
             
@@ -576,11 +573,12 @@ expresionSufija : ID_ CORABR_ expresion CORCER_
 			}else 
 				$$.tipo=T_ENTERO;}
 					
-	| ID_ PARABR_ 
-		{emite(INCTOP, crArgNulo(), crArgNulo(), crArgEntero(TALLA_ENTERO));}
-
-          parametrosActuales PARCER_  //FUNCIONS
-	        {simbolo=obtenerSimbolo($1);
+	|   ID_ 
+	    PARABR_ 
+		    {emite(INCTOP, crArgNulo(), crArgNulo(), crArgEntero(TALLA_ENTERO));} //Reservem espai per al valor de retorn (que sabem que és un enter)
+        parametrosActuales //Ací dins s'apilen els paràmetres de la funció
+        PARCER_
+            {simbolo=obtenerSimbolo($1);
 	        INF infoFunc = obtenerInfoFuncion(simbolo.ref);
             if(simbolo.categoria==NULO) {
 	            yyerror("Variable no declarada"); 
@@ -599,11 +597,11 @@ expresionSufija : ID_ CORABR_ expresion CORCER_
 	            $$.tipo=T_ERROR;
             }else 
 	            $$.tipo=T_ENTERO;
-                    emite(EPUSH, crArgNulo(), crArgNulo(), crArgEntero(si+2));
-                    emite(CALL, crArgNulo(), crArgNulo(), crArgEtiqueta(simbolo.desp));
-                    emite(DECTOP, crArgNulo(), crArgNulo(), crArgEntero(TALLA_SEGENLACES));
-                    $$.pos = crArgPosicion(nivel, creaVarTemp());
-                    emite(EPOP, crArgNulo(), crArgNulo(), $$.pos);}
+                emite(EPUSH, crArgNulo(), crArgNulo(), crArgEntero(si+2)); //Apilem la dir de retorn
+                emite(CALL, crArgNulo(), crArgNulo(), crArgEtiqueta(simbolo.desp)); //Cridem a la funció
+                emite(DECTOP, crArgNulo(), crArgNulo(), crArgEntero($4.talla)); //Desapilem els paràmetres
+                $$.pos = crArgPosicion(nivel, creaVarTemp());
+                emite(EPOP, crArgNulo(), crArgNulo(), $$.pos);} //Desapilem i passem el valor de retorn com a var. temp.
 							
 	| PARABR_ expresion PARCER_
 	        {$$.tipo=$2.tipo;
@@ -630,11 +628,11 @@ expresionSufija : ID_ CORABR_ expresion CORCER_
 
 parametrosActuales :
             {$$.ref=insertaInfoDominio(-1,T_VACIO);
-            $$.talla=0;} //El nombre de paràmetres de la funció
+            $$.talla=0;} //La talla dels paràmetres de la funció
 
 	| listaParametrosActuales
 	        {$$.ref=$1.ref;
-	        $$.talla=$1.talla;} //Passem amunt el nombre de paràmetres de la funció
+	        $$.talla=$1.talla;} //Passem amunt la talla dels paràmetres de la funció
 ;
 
 
@@ -648,8 +646,7 @@ listaParametrosActuales : expresion
                 $$.tipo=T_VACIO; //Per posar-li algo...
             $$.ref=insertaInfoDominio(-1,$1.tipo);
             $$.talla=TALLA_ENTERO;
-            emite(EPUSH, crArgNulo(), crArgNulo(), $1.pos);
-            }
+            emite(EPUSH, crArgNulo(), crArgNulo(), $1.pos);} //Apilem el paràmetre (el seu valor)
 
 	| expresion COMA_ listaParametrosActuales
             {if($1.tipo == T_ERROR)
@@ -659,8 +656,8 @@ listaParametrosActuales : expresion
             else
                 $$.tipo=T_VACIO; //Per posar-li algo...
             $$.ref = insertaInfoDominio($3.ref,$1.tipo);
-            $$.talla = $3.talla+TALLA_ENTERO;
-            emite(EPUSH, crArgNulo(), crArgNulo(), $1.pos);} //Incrementem el nombre de paràmetres de la funció
+            $$.talla = $3.talla+TALLA_ENTERO; //Sumem la seua talla
+            emite(EPUSH, crArgNulo(), crArgNulo(), $1.pos);} //Més paràmetres a la pila
 ;
 
 
