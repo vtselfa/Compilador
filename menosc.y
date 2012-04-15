@@ -318,14 +318,24 @@ instruccionIteracion :
         FOR_
         PARABR_
         expresionOpcional
+            {$<aux>$ = si;} 
         PUNTOYCOMA_
         expresion
-            {if($5.tipo!=T_LOGICO)
+            {if($6.tipo!=T_LOGICO)
                 yyerror("La expresión de la condición de parada del bucle FOR ha de ser de tipo lógico");}
+            {$<aux>$ = creaLans(si); 
+             emite(EIGUAL, $6.pos, crArgEntero(1), crArgNulo())} //Salt si condició certa, al cos del bucle
+            {$<aux>$ = creaLans(si); 
+             emite(GOTOS, crArgNulo(), crArgNulo(), crArgNulo())} //Salt si condició falsa, fora del bucle
+            {$<aux>$ = si;}
         PUNTOYCOMA_
         expresionOpcional
+            {emite(GOTOS, crArgNulo(), crArgNulo(), crArgEtiqueta($<aux>4)); //Bot incondicional a la condició
+             completaLans($<aux>8, crArgEtiqueta(si));}
         PARCER_
         instruccion
+            {emite(GOTOS, crArgNulo(), crArgNulo(), crArgEtiqueta($<aux>10)); //Bot incondicional al increment
+             completaLans($<aux>9, crArgEtiqueta(si));}
 ;
 
 
@@ -506,10 +516,9 @@ expresionUnaria : expresionSufija {$$.tipo=$1.tipo;}
 
 	| operadorUnario expresionUnaria
 	        {$$.tipo=$2.tipo;
-	        if( !$1 ){ //Hem definit el operador unari de resta com un 0
-	            $$.pos = crArgPosicion(nivel,creaVarTemp());
-	            emite( ESIG, $2.pos, crArgNulo(), $$.pos);
-	        }}
+                 $$.pos = crArgPosicion(nivel,creaVarTemp());
+	         emite($1, crArgEntero(0), $2.pos, $$.pos);
+	        }
 	
 	| operadorIncremento ID_
 	        {simbolo = obtenerSimbolo($2); 
@@ -710,9 +719,9 @@ operadorIncremento : MASMAS_ {$$=ESUM;}
 
 
 
-operadorUnario : MAS_ {$$=0;} //Per a saber quin és quin
+operadorUnario : MAS_ {$$=ESUM;}
 
-	| MENOS_ {$$=1;} //Per a saber quin és quin
+	| MENOS_ {$$=EDIF;} 
 ;
 
 %%
