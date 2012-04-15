@@ -657,8 +657,7 @@ expresionSufija : ID_ CORABR_ expresion CORCER_
 				$$.tipo=T_ERROR;
 			}else 
 				$$.tipo=T_ENTERO;
-                                $$.pos = crArgPosicion(simbolo.nivel,simbolo.desp);
-                  printf("Simb: %s\n",$1);}
+                                $$.pos = crArgPosicion(simbolo.nivel,simbolo.desp);}
 				
 	| ENTERO_ //Ok
 	        {$$.tipo=T_ENTERO;
@@ -688,20 +687,20 @@ listaParametrosActuales : expresion
                 $$.tipo=T_VACIO; //Per posar-li algo...
             $$.ref=insertaInfoDominio(-1,$1.tipo);
             $$.talla=TALLA_ENTERO;
-            emite(EPUSH, crArgNulo(), crArgNulo(), $1.pos);
-            printf("1\n");} //Apilem el paràmetre (el seu valor)
+            emite(EPUSH, crArgNulo(), crArgNulo(), $1.pos);} //Apilem el paràmetre (el seu valor)
 
-	| expresion COMA_ listaParametrosActuales
+	| expresion            
+            {emite(EPUSH, crArgNulo(), crArgNulo(), $1.pos);} //Més paràmetres a la pila
+          COMA_ listaParametrosActuales
             {if($1.tipo == T_ERROR)
                 $$.tipo=T_ERROR; //Propaguem l'error amunt per poder informar millor després (no volem que tire un error genèric al comparar dominis)
             else if($1.tipo != T_ENTERO)
                 yyerror("Error de tipo. Los parámetros de las funciones han de ser enteros");
             else
                 $$.tipo=T_VACIO; //Per posar-li algo...
-            $$.ref = insertaInfoDominio($3.ref,$1.tipo);
-            $$.talla = $3.talla+TALLA_ENTERO; //Sumem la seua talla
-            emite(EPUSH, crArgNulo(), crArgNulo(), $1.pos);
-            printf("2\n");} //Més paràmetres a la pila
+            $$.ref = insertaInfoDominio($4.ref,$1.tipo);
+            $$.talla = $4.talla+TALLA_ENTERO;} //Sumem la seua talla
+
 ;
 
 
