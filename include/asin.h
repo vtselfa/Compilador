@@ -83,7 +83,7 @@ typedef union YYSTYPE
 {
 
 /* Line 1676 of yacc.c  */
-#line 19 "menosc.y"
+#line 20 "menosc.y"
 
    int cent;
    char* ident;

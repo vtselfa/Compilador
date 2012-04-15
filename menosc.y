@@ -1,5 +1,6 @@
 %{
 #include <stdio.h>
+#include <string.h>
 #include "cabecera.h"
 extern int yylineno;
 
@@ -52,7 +53,11 @@ programa :
             {nivel=0;
             cargaContexto(nivel);
             dvar=0; //Desp en seg. de dades
-            si=0;} //Desp. en seg. de codi
+            si=0; //Desp. en seg. de codi
+            emite(INCTOP, crArgNulo(), crArgNulo(), crArgEntero(0));
+            posMain = creaLans(si);
+            emite(GOTOS, crArgNulo(), crArgNulo(), crArgNulo()); //Saltem a main()
+            }
         secuenciaDeclaraciones
             {simbolo = obtenerSimbolo("main"); //Comprovem que la funció main existeix
             if(simbolo.categoria != FUNCION)
@@ -142,7 +147,8 @@ declaracionFuncion :
             dvarMax = 0;
             mostrarTDS(0);}
 
-	    {emite(PUSHFP, crArgNulo(), crArgNulo(), crArgNulo());
+	    {hayReturn = FALSE;
+            emite(PUSHFP, crArgNulo(), crArgNulo(), crArgNulo());
             emite(FPTOP, crArgNulo(), crArgNulo(), crArgNulo());
             $<aux>$ =creaLans(si);
             emite(INCTOP,crArgNulo(),crArgNulo(),crArgNulo());}
@@ -154,12 +160,15 @@ declaracionFuncion :
                   tipo_arg = crArgEntero(dvar);      
             else
                   tipo_arg = crArgEntero(dvarMax);
-
             completaLans($<aux>3,tipo_arg);
+
+            if(strcmp(obtenerInfoFuncion(-1).nombre,"main") !=0 )
+                  completaLans(posReturn, crArgEtiqueta(si));        //Si no es main, ha d'haver-hi un return
 
             emite(TOPFP, crArgNulo(), crArgNulo(), crArgNulo());
             emite(FPPOP, crArgNulo(), crArgNulo(), crArgNulo());
-            emite(RET, crArgNulo(), crArgNulo(), crArgNulo());
+            if(strcmp(obtenerInfoFuncion(-1).nombre,"main") !=0 ) //Sols fem return si la funció no és main
+                 emite(RET, crArgNulo(), crArgNulo(), crArgNulo());
 	    descargaContexto(nivel);
             nivel--;
             dvar = $<aux>2;}
@@ -177,8 +186,10 @@ cabeceraFuncion :
         PARCER_ 
             {if($1.tipo!=T_ENTERO)
 		        yyerror("El tipo del valor de retorno de una función debe ser entero");
-	        if(!insertaSimbolo($2,FUNCION,$1.tipo,dvar,nivel-1,$5.ref))
-		        yyerror("Identificador repetido");}
+	     if(!insertaSimbolo($2,FUNCION,$1.tipo,si,nivel-1,$5.ref))
+		        yyerror("Identificador repetido");
+             if(strcmp($2,"main")==0)
+                    completaLans(posMain, crArgEtiqueta(si));}
 ;
 
 
@@ -274,9 +285,14 @@ instruccionEntradaSalida : READ_ PARABR_ ID_ PARCER_ PUNTOYCOMA_
 			    yyerror("La variable no está en la tabla de símbolos",$3); 
 			if( simbolo.tipo!=T_ERROR && simbolo.tipo!=T_ENTERO )
 			    yyerror("La instrucción read ha de recibir un parámetro de tipo entero");
+                        
+                        emite(EREAD, crArgNulo(), crArgNulo(), crArgPosicion(simbolo.nivel,simbolo.desp));
 			}
 
-	| PRINT_ PARABR_ expresion PARCER_ PUNTOYCOMA_
+	| PRINT_ PARABR_ expresion PARCER_ PUNTOYCOMA_ 
+               {if($3.tipo!=T_ERROR && $3.tipo != T_ENTERO)
+                       yyerror("La instrucción print ha de recibir una expresión de tipo entero");
+                emite(EWRITE, crArgNulo(), crArgNulo(), $3.pos);}
 ;
             
 
@@ -287,10 +303,16 @@ instruccionSeleccion :
         expresion
         PARCER_
             {if($3.tipo!=T_LOGICO) //Per a que el test b03.c mostre els errors que toca no comprovem si el tipo és T_ERROR
-                yyerror("La expresión de dentro del IF ha de ser de tipo lógico");}
+                yyerror("La expresión de dentro del IF ha de ser de tipo lógico");
+             $<aux>$ = creaLans(si);
+             emite(EIGUAL,$3.pos, crArgEntero(0), crArgNulo());}
         instruccion
+            {$<aux>$ = creaLans(si);
+             emite(GOTOS, crArgNulo(), crArgNulo(), crArgNulo());
+             completaLans($<aux>5, crArgEtiqueta(si));} 
         ELSE_
         instruccion
+            {completaLans($<aux>7, crArgEtiqueta(si));}
 ;
 
 
@@ -320,7 +342,15 @@ expresionOpcional :
 
 instruccionSalto : RETURN_ expresion PUNTOYCOMA_
             {if($2.tipo != T_ENTERO) //Per a que el test b03.c mostre els errors que toca no comprovem si el tipo és T_ERROR
-                yyerror("El valor de retorno de la función ha de ser de tipo entero");}
+                yyerror("El valor de retorno de la función ha de ser de tipo entero");
+             INF infoFunc = obtenerInfoFuncion(-1);
+             emite(EASIG, $2.pos, crArgNulo(), crArgPosicion(nivel, - (infoFunc.tparam + TALLA_SEGENLACES + TALLA_ENTERO))); //Falta sumar el FP?
+             if(hayReturn == FALSE){             
+                   posReturn = creaLans(si);
+                   hayReturn = TRUE;
+             }else
+                   posReturn = fusionaLans(creaLans(si), posReturn);
+             emite(GOTOS, crArgNulo(), crArgNulo(), crArgNulo());} 
 ;
 
 
