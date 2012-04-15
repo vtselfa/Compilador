@@ -454,10 +454,10 @@ expresionIgualdad : expresionRelacional //GCI
 					yyerror("Error de tipos en la asignación");
 				$$.tipo=T_ERROR;
 			}
-			TIPO_ARG res = crArgPosicion(nivel, creaVarTemp());
-			emite( EASIG, crArgEntero(1), crArgNulo(), res);  //Guarda true
-			emite( $2, $1.pos, $3.pos, crArgEntero(si+2)); //Si expr1 [!=]= expr2 -> salta la pròxima instrucció
-			emite( EASIG, crArgEntero(0), crArgNulo(), res);} //Guarda false
+			$$.pos = crArgPosicion(nivel, creaVarTemp());
+			emite( EASIG, crArgEntero(1), crArgNulo(), $$.pos);  //Guarda true
+			emite( $2, $1.pos, $3.pos, crArgEtiqueta(si+2)); //Si expr1 [!=]= expr2 -> salta la pròxima instrucció
+			emite( EASIG, crArgEntero(0), crArgNulo(), $$.pos);} //Guarda false
 ;
 
 
@@ -474,45 +474,53 @@ expresionRelacional : expresionAditiva //GCI
 					yyerror("Error de tipos en la asignación");
 				$$.tipo=T_ERROR;
 			}
-			TIPO_ARG res = crArgPosicion(nivel, creaVarTemp());
-			emite( EASIG, crArgEntero(1), crArgNulo(), res);  //Guarda true
-			emite( $2, $1.pos, $3.pos, crArgEntero(si+2)); //Si expr1 [!=]= expr2 -> salta la pròxima instrucció
-			emite( EASIG, crArgEntero(0), crArgNulo(), res);} //Guarda false
+			$$.pos = crArgPosicion(nivel, creaVarTemp());
+			emite( EASIG, crArgEntero(1), crArgNulo(), $$.pos);  //Guarda true
+			emite( $2, $1.pos, $3.pos, crArgEtiqueta(si+2)); //Si expr1 [!=]= expr2 -> salta la pròxima instrucció
+			emite( EASIG, crArgEntero(0), crArgNulo(), $$.pos);} //Guarda false
 ;
 
 
 
 expresionAditiva : expresionMultiplicativa
             {$$.tipo=$1.tipo;
-            $$.pos=$1.pos;}
+             $$.pos=$1.pos;}
 
 	| expresionAditiva operadorAditivo expresionMultiplicativa
 	        {if($1.tipo==$3.tipo && $1.tipo==T_ENTERO)
-	            $$.tipo=T_ENTERO;
-			else{
-				if (($1.tipo!=T_ERROR)&&($3.tipo!=T_ERROR))
-					yyerror("Error de tipos en la asignación");
-				$$.tipo=T_ERROR;
-			}}
+	               $$.tipo=T_ENTERO;
+                 else{
+		       if (($1.tipo!=T_ERROR)&&($3.tipo!=T_ERROR))
+		             yyerror("Error de tipos en la asignación");
+		       $$.tipo=T_ERROR;
+		 }
+		 $$.pos = crArgPosicion(nivel, creaVarTemp());               
+                 emite($2, $1.pos, $3.pos, $$.pos);}
 ;
 
 
 
-expresionMultiplicativa : expresionUnaria {$$.tipo=$1.tipo;}
+expresionMultiplicativa : expresionUnaria 
+                          {$$.tipo=$1.tipo; 
+                           $$.pos = $1.pos;}
 
 	| expresionMultiplicativa operadorMultiplicativo expresionUnaria
 	        {if($1.tipo==$3.tipo && $1.tipo==T_ENTERO)
 	            $$.tipo=T_ENTERO;
-			else{
-				if (($1.tipo!=T_ERROR)&&($3.tipo!=T_ERROR))
-					yyerror("Error de tipos en la asignación");
-				$$.tipo=T_ERROR;
-			}}
+	         else{
+			if (($1.tipo!=T_ERROR)&&($3.tipo!=T_ERROR))
+				yyerror("Error de tipos en la asignación");
+			$$.tipo=T_ERROR;
+		 }
+		 $$.pos = crArgPosicion(nivel, creaVarTemp());               
+                 emite($2, $1.pos, $3.pos, $$.pos);}
 ;
 
 
 
-expresionUnaria : expresionSufija {$$.tipo=$1.tipo;}
+expresionUnaria : expresionSufija 
+                    {$$.tipo=$1.tipo;
+                     $$.pos = $1.pos;}
 
 	| operadorUnario expresionUnaria
 	        {$$.tipo=$2.tipo;
@@ -580,7 +588,11 @@ expresionSufija : ID_ CORABR_ expresion CORCER_
 				yyerror("Los operadores de incremento solo se pueden aplicar a enteros");
 				$$.tipo=T_ERROR;
 			}else 
-				$$.tipo=T_ENTERO;}
+				$$.tipo=T_ENTERO;
+                        $$.pos = crArgPosicion(nivel, creaVarTemp());
+		        TIPO_ARG res = crArgPosicion(simbolo.nivel, simbolo.desp);
+                        emite(EIGUAL, res, crArgNulo(), $$.pos);  //Copia el contingut de la variable a la variable temporal
+                        emite($2, res, crArgEntero(1), res);}     //Incrementa/decrementa la variable en 1
 					
 	|   ID_ 
 	    PARABR_ 
@@ -606,7 +618,9 @@ expresionSufija : ID_ CORABR_ expresion CORCER_
 	            $$.tipo=T_ERROR;
             }else 
 	            $$.tipo=T_ENTERO;
-                emite(EPUSH, crArgNulo(), crArgNulo(), crArgEntero(si+2)); //Apilem la dir de retorn
+ //               emite(EPUSH, crArgNulo(), crArgNulo(), crArgEntero(si+2)); //Apilem la dir de retorn
+                                                                             // NO l'APILEM, CALL HO FA
+                                                                             // sí, és prou estúpid però és aixina
                 emite(CALL, crArgNulo(), crArgNulo(), crArgEtiqueta(simbolo.desp)); //Cridem a la funció
                 emite(DECTOP, crArgNulo(), crArgNulo(), crArgEntero($4.talla)); //Desapilem els paràmetres
                 $$.pos = crArgPosicion(nivel, creaVarTemp());
@@ -616,7 +630,7 @@ expresionSufija : ID_ CORABR_ expresion CORCER_
 	        {$$.tipo=$2.tipo;
 	        $$.pos=$2.pos;}
 	
-	| ID_
+	| ID_ //CGI
 	        {simbolo=obtenerSimbolo($1);
 			if(simbolo.categoria==NULO) {
 						yyerror("Variable no declarada"); 
@@ -625,7 +639,8 @@ expresionSufija : ID_ CORABR_ expresion CORCER_
 				yyerror("Error de tipo. La variable debe ser un entero");
 				$$.tipo=T_ERROR;
 			}else 
-				$$.tipo=T_ENTERO;}
+				$$.tipo=T_ENTERO;
+                                $$.pos = crArgPosicion(simbolo.nivel,simbolo.desp);}
 				
 	| ENTERO_ //Ok
 	        {$$.tipo=T_ENTERO;
