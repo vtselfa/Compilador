@@ -54,7 +54,12 @@ programa :
             cargaContexto(nivel);
             dvar=0; //Desp en seg. de dades
             si=0; //Desp. en seg. de codi
-            emite(INCTOP, crArgNulo(), crArgNulo(), crArgEntero(0));
+
+            esPrimeraFunc = TRUE;
+            tamVarGlobal = 0;
+            posVarGlobal = creaLans(si);
+            emite(INCTOP, crArgNulo(), crArgNulo(), crArgNulo()); //Desplaça el tope un nombre igual al tamany del segment de variables globals
+
             posMain = creaLans(si);
             emite(GOTOS, crArgNulo(), crArgNulo(), crArgNulo()); //Saltem a main()
             }
@@ -85,9 +90,12 @@ declaracion : declaracionVariable
             {if(!insertaSimbolo($1.nombre,VARIABLE,$1.tipo,dvar,nivel,$1.ref)) 
                 yyerror("Identificador repetido");
             mostrarTDS(0); 
-	        dvar+=$1.talla;}
+	        dvar+=$1.talla;
+                tamVarGlobal+=$1.talla;}
 		        
-	| declaracionFuncion
+	| declaracionFuncion {if(esPrimeraFunc==TRUE)
+                                   completaLans(posVarGlobal, crArgEntero(tamVarGlobal));
+                              esPrimeraFunc = FALSE;}
 ;
 
 
@@ -381,7 +389,8 @@ expresion : expresionIgualdad //GCI
 			if($2!=EASIG) //Tenim un '+=' o un '-='
 			    emite($2, id, $3.pos, id);
 			else //Tenim un '='
-			    emite(EASIG, $3.pos, crArgNulo(), id); }
+			    emite(EASIG, $3.pos, crArgNulo(), id); 
+                        $$.pos = id;} //A modificar, pot ser es deuria crear una var temp per fer-ho tot homogeni
 							
 	| ID_ CORABR_ expresion CORCER_ operadorAsignacion expresion //id[expr] [+- ]= expr //GCI
 	        {simbolo = obtenerSimbolo($1); 
@@ -404,13 +413,14 @@ expresion : expresionIgualdad //GCI
 				}
 			}
 			TIPO_ARG vec = crArgPosicion(simbolo.nivel, simbolo.desp);
+		        $$.pos = crArgPosicion(nivel, creaVarTemp());
 			if($5!=EASIG){ //Tenim un '+=' o un '-='
-			    TIPO_ARG tmp = crArgPosicion(nivel, creaVarTemp()); //Var temp per a fer càlculs
-			    emite( EAV, vec, $3.pos, tmp); //array -> tmp
-			    emite( $5, tmp, $6.pos, tmp); //tmp = tmp [+-] expr 
-			    emite( EVA, vec, $3.pos, tmp); //tmp -> array
+			    emite( EAV, vec, $3.pos, $$.pos); //array -> tmp
+			    emite( $5, $$.pos , $6.pos, $$.pos); //tmp = tmp [+-] expr 
+			    emite( EVA, vec, $3.pos, $$.pos); //tmp -> array
 			}else{ //Tenim un '='
 			    emite( EVA, vec, $3.pos, $6.pos);
+                            emite (EASIG, $6.pos, crArgNulo(), $$.pos);
 			}}
 												
 	| ID_ PUNTO_ ID_ operadorAsignacion expresion  //id.id = expr //GCI
@@ -437,7 +447,8 @@ expresion : expresionIgualdad //GCI
 			if($4!=EASIG) //Tenim un '+=' o un '-='
 			    emite( $4, campo, $5.pos, campo );
 			else //Tenim un '='
-			    emite( EASIG, $5.pos, crArgNulo(), campo );}
+			    emite( EASIG, $5.pos, crArgNulo(), campo );
+                        $$.pos = campo;} //A modificar, pot ser es deuria crear una var temp per fer-ho tot homogeni
 ;
 
 
@@ -538,7 +549,7 @@ expresionUnaria : expresionSufija
 		    TIPO_ARG res = crArgPosicion(simbolo.nivel, simbolo.desp);
 		    emite( $1, res, crArgEntero(1), res ); //Sumem 1 a la variable
 		    $$.pos = crArgPosicion(nivel, creaVarTemp()); //Cream var temp
-		    emite( EASIG, res, crArgNulo(), res); }; //Asignim la var temp a $$.pos
+		    emite( EASIG, res, crArgNulo(), $$.pos); }; //Asignim la var temp a $$.pos
 ;
 
 
@@ -556,7 +567,11 @@ expresionSufija : ID_ CORABR_ expresion CORCER_
 					yyerror("El índice debe ser un entero"); 
 				$$.tipo=T_ERROR; 
 			} else
-			    $$.tipo=T_ENTERO;}
+			    $$.tipo=T_ENTERO;
+
+			$$.pos = crArgPosicion(nivel, creaVarTemp());
+			emite( EAV, crArgPosicion(simbolo.nivel, simbolo.desp), $3.pos, $$.pos); 
+                      }
 							
 	| ID_ PUNTO_ ID_
 	        {simbolo = obtenerSimbolo($1);
@@ -577,6 +592,8 @@ expresionSufija : ID_ CORABR_ expresion CORCER_
 					$$.tipo=T_ERROR;
 				}else 
 					$$.tipo=T_ENTERO;
+
+			$$.pos = crArgPosicion(simbolo.nivel, simbolo.desp + registro.desp);
 		    }}
 
 	| ID_ operadorIncremento
@@ -591,7 +608,7 @@ expresionSufija : ID_ CORABR_ expresion CORCER_
 				$$.tipo=T_ENTERO;
                         $$.pos = crArgPosicion(nivel, creaVarTemp());
 		        TIPO_ARG res = crArgPosicion(simbolo.nivel, simbolo.desp);
-                        emite(EIGUAL, res, crArgNulo(), $$.pos);  //Copia el contingut de la variable a la variable temporal
+                        emite(EASIG, res, crArgNulo(), $$.pos);  //Copia el contingut de la variable a la variable temporal
                         emite($2, res, crArgEntero(1), res);}     //Incrementa/decrementa la variable en 1
 					
 	|   ID_ 
@@ -640,7 +657,8 @@ expresionSufija : ID_ CORABR_ expresion CORCER_
 				$$.tipo=T_ERROR;
 			}else 
 				$$.tipo=T_ENTERO;
-                                $$.pos = crArgPosicion(simbolo.nivel,simbolo.desp);}
+                                $$.pos = crArgPosicion(simbolo.nivel,simbolo.desp);
+                  printf("Simb: %s\n",$1);}
 				
 	| ENTERO_ //Ok
 	        {$$.tipo=T_ENTERO;
@@ -670,7 +688,8 @@ listaParametrosActuales : expresion
                 $$.tipo=T_VACIO; //Per posar-li algo...
             $$.ref=insertaInfoDominio(-1,$1.tipo);
             $$.talla=TALLA_ENTERO;
-            emite(EPUSH, crArgNulo(), crArgNulo(), $1.pos);} //Apilem el paràmetre (el seu valor)
+            emite(EPUSH, crArgNulo(), crArgNulo(), $1.pos);
+            printf("1\n");} //Apilem el paràmetre (el seu valor)
 
 	| expresion COMA_ listaParametrosActuales
             {if($1.tipo == T_ERROR)
@@ -681,7 +700,8 @@ listaParametrosActuales : expresion
                 $$.tipo=T_VACIO; //Per posar-li algo...
             $$.ref = insertaInfoDominio($3.ref,$1.tipo);
             $$.talla = $3.talla+TALLA_ENTERO; //Sumem la seua talla
-            emite(EPUSH, crArgNulo(), crArgNulo(), $1.pos);} //Més paràmetres a la pila
+            emite(EPUSH, crArgNulo(), crArgNulo(), $1.pos);
+            printf("2\n");} //Més paràmetres a la pila
 ;
 
 
