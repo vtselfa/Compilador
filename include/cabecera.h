@@ -54,6 +54,8 @@ int ro;
 int posMain; //Sempre va a ser 1, però whatever
 int posReturn; //Per a botar al final de la funció al fer return
 int hayReturn; //Indica si ja hem passat per un return, necessari per completar-los tots
-
+int esPrimeraFunc;
+int tamVarGlobal;
+int posVarGlobal;
 #define CABECERA_H
 #endif

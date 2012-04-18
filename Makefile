@@ -13,3 +13,7 @@ asin.c: menosc.y
 	mv asin.h ./include
 alex.c: menosc.l
 	flex -o alex.c menosc.l
+clean:
+	rm -f asin.o alex.o asin.c alex.c include/asin.h
+	rm -f programes_exemple/*.c3d
+	rm -f cmc
